@@ -1,0 +1,35 @@
+---
+title: "node_prediction_GCN"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{node_prediction_GCN}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(keras)
+library(rspektral)
+```
+
+```{r load_data}
+c(A, X, y, train_mask, val_mask, test_mask) %<-% spk$datasets$citation$load_data("cora")
+```
+```{r params}
+channels <- 16           # Number of channels in the first layer
+N <- dim(X)[1]           # Number of nodes in the graph
+F <- dim(X)[2]           # Original size of node features
+n_classes <- dim(y)[2]   # Number of classes
+dropout <- 0.5           # Dropout rate for the features
+l2_reg <- 5e-4 / 2       # L2 regularization rate
+learning_rate <- 1e-2    # Learning rate
+epochs <- 200            # Number of training epochs
+es_patience <- 10        # Patience for early stopping
+```
