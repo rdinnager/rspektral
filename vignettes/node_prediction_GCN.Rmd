@@ -20,7 +20,7 @@ library(rspektral)
 ```
 
 ```{r load_data}
-c(A, X, y, train_mask, val_mask, test_mask) %<-% spk$datasets$citation$load_data("cora")
+c(A, X, y, train_mask, val_mask, test_mask) %<-% dataset_citations_cora()
 ```
 ```{r params}
 channels <- 16           # Number of channels in the first layer
@@ -32,4 +32,79 @@ l2_reg <- 5e-4 / 2       # L2 regularization rate
 learning_rate <- 1e-2    # Learning rate
 epochs <- 200            # Number of training epochs
 es_patience <- 10        # Patience for early stopping
+```
+
+
+```{r preprocess}
+# Preprocessing operations
+fltr <- preprocess_laplacian_mod(A, densify = TRUE)
+dim(fltr)
+X <- as.matrix(X)
+```
+
+```{r setup_model}
+
+X_in <- layer_input(shape = c(F))
+fltr_in <- layer_input(shape = c(N), sparse = TRUE)
+
+dropout_1 <- X_in %>%
+  layer_dropout(rate = dropout)
+
+graph_conv_1 <- list(dropout_1, fltr_in) %>%
+  layer_graph_conv(channels,
+                   activation = 'relu',
+                   kernel_regularizer = regularizer_l2(l2_reg),
+                   use_bias = FALSE)
+
+dropout_2 <-  graph_conv_1 %>%
+  layer_dropout(dropout)
+
+graph_conv_2 <- list(dropout_2, fltr_in) %>%
+  layer_graph_conv(n_classes,
+                   activation = "softmax",
+                   use_bias = FALSE)
+
+```
+
+```{r create_model}
+
+model <- keras_model(inputs = list(X_in, fltr_in), outputs = graph_conv_2)
+
+optimizer <- optimizer_adam(lr = learning_rate)
+
+model %>%
+  compile(optimizer = optimizer,
+          loss = "categorical_crossentropy",
+          weighted_metrics = "acc")
+
+```
+
+```{r train_model}
+
+validation_data <- list(list(X, fltr), y, val_mask)
+
+history <- model %>%
+  fit(x = list(X, fltr),
+      y = y,
+      sample_weight = train_mask,
+      epochs = epochs,
+      batch_size = N,
+      validation_data = validation_data,
+      shuffle = FALSE, # Shuffling data means shuffling the whole graph
+      callbacks = callback_early_stopping(patience = es_patience,
+                                          restore_best_weights = TRUE))
+
+
+```
+
+```{r eval_model}
+
+eval_results <- model %>%
+  evaluate(list(X, fltr),
+           y,
+           sample_weight = test_mask,
+           batch_size = N)
+
+eval_results  
+ 
 ```

@@ -11,15 +11,17 @@ layer_graph_conv(
   use_bias = True,
   kernel_initializer = "glorot_uniform",
   bias_initializer = "zeros",
-  kernel_regularizer = None,
-  bias_regularizer = None,
-  activity_regularizer = None,
-  kernel_constraint = None,
-  bias_constraint = None,
+  kernel_regularizer = NULL,
+  bias_regularizer = NULL,
+  activity_regularizer = NULL,
+  kernel_constraint = NULL,
+  bias_constraint = NULL,
   ...
 )
 }
 \arguments{
+\item{object}{model or layer object;}
+
 \item{channels}{number of output channels;}
 
 \item{activation}{activation function to use;}

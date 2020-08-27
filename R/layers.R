@@ -14,6 +14,7 @@
 #' **Output** \cr
 #' - Node features with the same shape as the input, but with the last
 #' dimension changed to `channels`.
+#' @param object model or layer object;
 #' @param channels number of output channels;
 #' @param activation activation function to use;
 #' @param use_bias bool, add a bias vector to the output;
@@ -32,14 +33,14 @@ layer_graph_conv <- function(object,
                              use_bias             = True,
                              kernel_initializer   = 'glorot_uniform',
                              bias_initializer     = 'zeros',
-                             kernel_regularizer   = None,
-                             bias_regularizer     = None,
-                             activity_regularizer = None,
-                             kernel_constraint    = None,
-                             bias_constraint      = None,
+                             kernel_regularizer   = NULL,
+                             bias_regularizer     = NULL,
+                             activity_regularizer = NULL,
+                             kernel_constraint    = NULL,
+                             bias_constraint      = NULL,
                              ...) {
 
-  args <- list(channels,
+  args <- list(channels             = as.integer(channels),
                activation           = activation,
                use_bias             = use_bias,
                kernel_initializer   = kernel_initializer,
@@ -52,5 +53,22 @@ layer_graph_conv <- function(object,
                ...)
 
   keras::create_layer(spk$layers$GraphConv, object, args)
+
+}
+
+#' Calculate modified Laplacian on an adjacency matrix
+#'
+#' @param A Adjacency matrix as a sparse matrix (\code{\link[Matrix]{dgRMatrix}})
+#' @param densify Should the Laplacian be returned as a dense matrix (default is sparse)?
+#'
+#' @return The Laplacian as a sparse matrix (or a dense matrix if \code{densify} is \code{TRUE})
+#' @export
+preprocess_laplacian_mod <- function(A, densify = FALSE) {
+  res <- spk$layers$GraphConv$preprocess(A)
+  if(densify) {
+    res <- as.matrix(res)
+  }
+
+  res
 
 }
