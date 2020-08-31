@@ -17,7 +17,7 @@
 #' @return A list with 6 elements (containing - Adjacency matrix, Node features,
 #' Labels, and 3 binary masks for train, validation, and test splits.)
 #' @export
-dataset_citations_cora <- function(dataset_name = "cora", normalize_features = TRUE, random_split = FALSE) {
+dataset_citations <- function(dataset_name = "cora", normalize_features = TRUE, random_split = FALSE) {
 
   args <- list(dataset_name = dataset_name,
                normalize_features = normalize_features,

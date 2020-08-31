@@ -1,0 +1,22 @@
+---
+title: "compare_performance"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{compare_performance}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(keras)
+library(rspektral)
+```
+
+Here we will compare a number of different graph-based convolutional network methods for classifying documents using information about their citation networks. This is a node classification task, where documents are nodes in a citation networks, and features are the presence of different words (a bag-of-words)

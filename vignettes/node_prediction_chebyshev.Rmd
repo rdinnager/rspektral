@@ -1,8 +1,8 @@
 ---
-title: "node_prediction_GCN"
+title: "node_prediction_chebyshev"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{node_prediction_GCN}
+  %\VignetteIndexEntry{node_prediction_chebyshev}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -17,7 +17,6 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(keras)
 library(rspektral)
-library(tfdatasets)
 ```
 
 ```{r load_data}
@@ -25,6 +24,7 @@ c(A, X, y, train_mask, val_mask, test_mask) %<-% dataset_citations()
 ```
 ```{r params}
 channels <- 16           # Number of channels in the first layer
+K <- 2                   # Max degree of the Chebyshev polynomials
 N <- dim(X)[1]           # Number of nodes in the graph
 F <- dim(X)[2]           # Original size of node features
 n_classes <- dim(y)[2]   # Number of classes
@@ -33,12 +33,13 @@ l2_reg <- 5e-4 / 2       # L2 regularization rate
 learning_rate <- 1e-2    # Learning rate
 epochs <- 300            # Number of training epochs
 es_patience <- 10        # Patience for early stopping
+
 ```
 
 
 ```{r preprocess}
 # Preprocessing operations
-fltr <- preprocess_laplacian_mod(A, densify = FALSE)
+fltr <- preprocess_chebyshev(A, densify = FALSE)
 dim(fltr)
 X <- as.matrix(X)
 ```
@@ -52,18 +53,20 @@ dropout_1 <- X_in %>%
   layer_dropout(rate = dropout)
 
 graph_conv_1 <- list(dropout_1, fltr_in) %>%
-  layer_graph_conv(channels,
-                   activation = 'relu',
-                   kernel_regularizer = regularizer_l2(l2_reg),
-                   use_bias = FALSE)
+  layer_cheb_conv(channels,
+                  K = K,
+                  activation = 'relu',
+                  kernel_regularizer = regularizer_l2(l2_reg),
+                  use_bias = FALSE)
 
 dropout_2 <-  graph_conv_1 %>%
   layer_dropout(dropout)
 
 graph_conv_2 <- list(dropout_2, fltr_in) %>%
-  layer_graph_conv(n_classes,
-                   activation = "softmax",
-                   use_bias = FALSE)
+  layer_cheb_conv(n_classes,
+                  K = K,
+                  activation = "softmax",
+                  use_bias = FALSE)
 
 ```
 
@@ -112,39 +115,4 @@ eval_results <- model %>%
 
 eval_results  
  
-```
-
-```{r faster_training}
-gen <- tensors_dataset(list(inputs =
-                              list(tf$convert_to_tensor(X), 
-                                   tf$convert_to_tensor(fltr)), 
-                            targets = tf$convert_to_tensor(y), 
-                            sample_weights = tf$convert_to_tensor(train_mask)))
-
-make_data_gen <- function(inputs, targets, sample_weights) {
-  dat <- list(inputs = inputs, targets = targets, sample_weights = sample_weights)
-  function() {
-    dat
-  }
-}
-
-genit <- make_data_gen(list(X, fltr), y, train_mask)
-
-dat <- list(inputs = list(X, fltr), targets = y, sample_weights = train_mask)
-gen <- function() {
-  dat
-}
-
-gen <- keras:::as_generator.function(genit)
-
-validation_data <- list(list(X, fltr), y, val_mask)
-
-model %>%
-  fit_generator(generator = gen,
-                steps_per_epoch = 100,
-                epochs = 5,
-                #validation_data = validation_data,
-                verbose = 1,
-                view_metrics = TRUE)
-
 ```
