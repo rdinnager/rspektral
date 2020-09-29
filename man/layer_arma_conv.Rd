@@ -2,25 +2,49 @@
 % Please edit documentation in R/layers.R
 \name{layer_arma_conv}
 \alias{layer_arma_conv}
-\title{A graph convolutional layer with ARMA\(_K\) filters.}
+\title{A graph convolutional layer with ARMA_K filters.}
 \usage{
 layer_arma_conv(
   object,
   channels,
-  order = 1,
-  iterations = 1,
-  share_weights = FALSE,
-  gcn_activation = "relu",
-  dropout_rate = 0,
+  attn_heads = 1,
+  concat_heads = TRUE,
+  dropout_rate = 0.5,
+  return_attn_coef = FALSE,
   activation = NULL,
   use_bias = TRUE,
   kernel_initializer = "glorot_uniform",
   bias_initializer = "zeros",
+  attn_kernel_initializer = "glorot_uniform",
   kernel_regularizer = NULL,
   bias_regularizer = NULL,
+  attn_kernel_regularizer = NULL,
   activity_regularizer = NULL,
   kernel_constraint = NULL,
   bias_constraint = NULL,
+  attn_kernel_constraint = NULL,
+  ...
+)
+
+layer_arma_conv(
+  object,
+  channels,
+  attn_heads = 1,
+  concat_heads = TRUE,
+  dropout_rate = 0.5,
+  return_attn_coef = FALSE,
+  activation = NULL,
+  use_bias = TRUE,
+  kernel_initializer = "glorot_uniform",
+  bias_initializer = "zeros",
+  attn_kernel_initializer = "glorot_uniform",
+  kernel_regularizer = NULL,
+  bias_regularizer = NULL,
+  attn_kernel_regularizer = NULL,
+  activity_regularizer = NULL,
+  kernel_constraint = NULL,
+  bias_constraint = NULL,
+  attn_kernel_constraint = NULL,
   ...
 )
 }
@@ -28,16 +52,6 @@ layer_arma_conv(
 \item{object}{model or layer object;}
 
 \item{channels}{number of output channels;}
-
-\item{order}{order of the full ARMA\(_K\) filter, i.e., the number of parallel
-stacks in the layer;}
-
-\item{iterations}{number of iterations to compute each ARMA\(_1\) approximation;}
-
-\item{share_weights}{share the weights in each ARMA\(_1\) stack.}
-
-\item{gcn_activation}{activation function to use to compute each ARMA\(_1\)
-stack;}
 
 \item{dropout_rate}{dropout rate for skip connection;}
 
@@ -58,8 +72,43 @@ stack;}
 \item{kernel_constraint}{constraint applied to the weights;}
 
 \item{bias_constraint}{constraint applied to the bias vector.}
+
+\item{order}{order of the full ARMA\(_K\) filter, i.e., the number of parallel
+stacks in the layer;}
+
+\item{iterations}{number of iterations to compute each ARMA\(_1\) approximation;}
+
+\item{share_weights}{share the weights in each ARMA\(_1\) stack.}
+
+\item{gcn_activation}{activation function to use to compute each ARMA\(_1\)
+stack;}
 }
 \description{
+A graph convolutional layer with ARMA_K filters, as presented by
+\href{https://arxiv.org/abs/1901.01343}{Bianchi et al. (2019)}. \cr
+\strong{Mode}: single, disjoint, mixed, batch. This layer computes:
+\deqn{Z = \frac{1}{K} \sum\limits_{k=1}^K \bar X_k^{(T)}}{Z =
+(1/K) sum_{k=1}^K(Xbar_k^((T))}
+where \eqn{K} is the order of the ARMA_K filter, and where:
+\deqn{ \bar \X_k^{(t + 1)} = \sigma \left(\tilde \L \bar \X^{(t)} \W^{(t)} + \X \V^{(t)} \right)}{Xbar_k^((t + 1)) =
+sigma *(L_tilde Xbar^((t))*W^((t)) + X*V^((t)))}
+is a recursive approximation of an ARMA_1 filter, where
+\eqn{\bar X^{(0)} = X}{Xbar^((0)) = X}
+and
+\deqn{\tilde L = \frac{2}{\lambda_{max}} \cdot (I - D^{-1/2} A D^{-1/2}) - I}{L_tilde =
+(2/lambda_max) * (I - D^(-1/2) * A * D^(-1/2)) - I}
+is the normalized Laplacian with a rescaled spectrum. \cr \cr
+\strong{Input}
+\itemize{
+\item Node features of shape \verb{([batch], N, F)};
+\item Normalized and rescaled Laplacian of shape \verb{([batch], N, N)}; can be
+computed with \code{spektral.utils.convolution.normalized_laplacian} and
+\code{spektral.utils.convolution.rescale_laplacian}. \cr \cr
+\strong{Output}
+\item Node features with the same shape as the input, but with the last
+dimension changed to \code{channels}.
+}
+
 A graph convolutional layer with ARMA\(\emph{K\) filters, as presented by
 \href{https://arxiv.org/abs/1901.01343}{Bianchi et al. (2019)}. \strong{Mode}: single, disjoint, mixed, batch. This layer computes:
 $$ \Z = \frac{1}{K} \sum\limits}{k=1}^K \bar\X_k^{(T)},

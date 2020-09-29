@@ -11,6 +11,8 @@ spk <- NULL
 
 .onLoad <- function(libname, pkgname) {
 
+  reticulate::configure_environment(pkgname)
+
   spk <<- reticulate::import("spektral", delay_load = list(
     priority = 10,
     environment = "r-tensorflow"

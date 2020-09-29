@@ -2,26 +2,7 @@
 % Please edit documentation in R/layers.R
 \name{layer_cheb_conv}
 \alias{layer_cheb_conv}
-\title{A Chebyshev graph convolutional layer.
-A Chebyshev convolutional layer as presented by
-\href{https://arxiv.org/abs/1606.09375}{Defferrard et al. (2016)}. \cr
-\strong{Mode}: single, disjoint, mixed, batch. This layer computes:
-$$ \Z = \sum \limits_{k=0}^{K - 1} \T^{(k)} \W^{(k)} + \b^{(k)},
-$$
-where \( \T^{(0)}, ..., \T^{(K - 1)} \) are Chebyshev polynomials of \(\tilde \L\)
-defined as
-$$ \T^{(0)} = \X \\ \T^{(1)} = \tilde \L \X \\ \T^{(k \ge 2)} = 2 \cdot \tilde \L \T^{(k - 1)} - \T^{(k - 2)},
-$$
-where
-$$ \tilde \L = \frac{2}{\lambda_{max}} \cdot (\I - \D^{-1/2} \A \D^{-1/2}) - \I
-$$
-is the normalized Laplacian with a rescaled spectrum. \strong{Input} - Node features of shape \verb{([batch], N, F)};
-\itemize{
-\item A list of K Chebyshev polynomials of shape
-\verb{[([batch], N, N), ..., ([batch], N, N)]}; can be computed with
-\code{spektral.utils.convolution.chebyshev_filter}. \strong{Output} - Node features with the same shape of the input, but with the last
-dimension changed to \code{channels}.
-}}
+\title{A Chebyshev graph convolutional layer.}
 \usage{
 layer_cheb_conv(
   object,
@@ -65,24 +46,33 @@ layer_cheb_conv(
 \item{bias_constraint}{constraint applied to the bias vector.}
 }
 \description{
-A Chebyshev graph convolutional layer.
 A Chebyshev convolutional layer as presented by
 \href{https://arxiv.org/abs/1606.09375}{Defferrard et al. (2016)}. \cr
 \strong{Mode}: single, disjoint, mixed, batch. This layer computes:
-$$ \Z = \sum \limits_{k=0}^{K - 1} \T^{(k)} \W^{(k)} + \b^{(k)},
-$$
-where \( \T^{(0)}, ..., \T^{(K - 1)} \) are Chebyshev polynomials of \(\tilde \L\)
-defined as
-$$ \T^{(0)} = \X \\ \T^{(1)} = \tilde \L \X \\ \T^{(k \ge 2)} = 2 \cdot \tilde \L \T^{(k - 1)} - \T^{(k - 2)},
-$$
-where
-$$ \tilde \L = \frac{2}{\lambda_{max}} \cdot (\I - \D^{-1/2} \A \D^{-1/2}) - \I
-$$
-is the normalized Laplacian with a rescaled spectrum. \strong{Input} - Node features of shape \verb{([batch], N, F)};
+\deqn{\Z = \sum \limits_{k=0}^{K - 1} \T^{(k)} \W^{(k)} + \b^{(k)}}{Z =
+sum_{k=0}^{K - 1}(T^((k))*W^((k)) + b^((k)))}
+where \eqn{ \T^{(0)}, ..., \T^{(K - 1)}}{T^((0)), ..., T^((K - 1))} are Chebyshev
+polynomials of \eqn{L_tilde} defined as
+\deqn{ \T^{(0)} = \X \\ \T^{(1)} = \tilde \L \X \\ \T^{(k \ge 2)} = 2 \cdot \tilde \L \T^{(k - 1)} - \T^{(k - 2)}}{T^((0)) =
+X; T^((1)) = L_tilde*X;  T^((k > 2)) = 2 * L_tilde T^((k - 1)) - T^((k - 2))}
+where \deqn{ \tilde \L = \frac{2}{\lambda_{max}} \cdot (\I - \D^{-1/2} \A \D^{-1/2}) - \I}{L_tilde =
+(2 / lambda_max) * (I - D^(-1/2) * A * D^(-1/2)) - I}
+is the normalized Laplacian with a rescaled spectrum. \cr \cr
+\strong{Input} \cr
 \itemize{
+\item Node features of shape \verb{([batch], N, F)};
 \item A list of K Chebyshev polynomials of shape
 \verb{[([batch], N, N), ..., ([batch], N, N)]}; can be computed with
-\code{spektral.utils.convolution.chebyshev_filter}. \strong{Output} - Node features with the same shape of the input, but with the last
+\code{spektral.utils.convolution.chebyshev_filter}. \cr \cr
+\strong{Output} \cr
+\item Node features with the same shape of the input, but with the last
 dimension changed to \code{channels}.
 }
+}
+\details{
+See the online documentation for \href{https://graphneural.network/layers/convolution/#chebconv}{Spektral (python package)}
+for more details.
+}
+\author{
+Daniele Grattarola (python code); Russell Dinnage (R wrapper)
 }

@@ -46,9 +46,10 @@ layer_graph_conv(
 A graph convolutional layer (GCN) as presented by
 \href{https://arxiv.org/abs/1609.02907}{Kipf & Welling (2016)}. \cr
 \strong{Mode}: single, disjoint, mixed, batch. This layer computes:
-\deqn{\Z = \hat \D^{-1/2} \hat \A \hat \D^{-1/2} \X \W + \b}
-where \eqn{\( \hat \A = \A + \I \)} is the adjacency matrix with added self-loops
-and \eqn{\(\hat\D\)} is its degree matrix. \cr \cr
+\deqn{\Z = \hat \D^{-1/2} \hat \A \hat \D^{-1/2} \X \W + \b}{Z =
+D_hat^(-1/2)*A_hat*D_hat^(-1/2)*XW + b}
+where \eqn{\( \hat \A = \A + \I \)}{A_hat = A + I} is the adjacency
+matrix with added self-loops and \eqn{\(\hat\D\)}{D_hat} is its degree matrix. \cr \cr
 \strong{Input} \cr
 A list of: \cr
 \itemize{
@@ -59,4 +60,11 @@ A list of: \cr
 \item Node features with the same shape as the input, but with the last
 dimension changed to \code{channels}.
 }
+}
+\details{
+See the online documentation for \href{https://graphneural.network/layers/convolution/#graphconv}{Spektral (python package)}
+for more details.
+}
+\author{
+Daniele Grattarola (python code); Russell Dinnage (R wrapper)
 }
