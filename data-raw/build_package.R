@@ -9,6 +9,9 @@ library(unglue)
 spektral_dir <- tempdir()
 src_dir <- usethis::use_course("danielegrattarola/spektral", spektral_dir)
 
+1
+1
+
 conv_layer_source <- file.path(src_dir, "spektral/layers/convolutional") %>%
   list.files(full.names = TRUE) %>%
   .[-1] %>%
@@ -64,6 +67,7 @@ params_doc <- conv_docs[ , 2] %>%
                     dplyr::mutate(layer_name = .y))
 
 
+
 layer_param_dat <- params_code %>%
   dplyr::left_join(params_doc)
 
@@ -87,6 +91,12 @@ layer_param_dat <- layer_param_dat %>%
                                            default == "None" ~ "NULL",
                                            TRUE ~ default)) %>%
   dplyr::mutate(is_numeric = !is.na(as.numeric(default)))
+
+## fix up docos
+conv_titles <- conv_docs[ , 2] %>%
+  stringr::str_extract("(.*?)layer")
+conv_docs_fixed <- conv_docs[ , 2] %>%
+
 
 
 ##### pooling ######
