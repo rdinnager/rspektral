@@ -5,6 +5,8 @@ library(readr)
 library(purrr)
 library(stringr)
 library(unglue)
+library(snakecase)
+library(reticulate)
 
 spektral_dir <- tempdir()
 src_dir <- usethis::use_course("danielegrattarola/spektral", spektral_dir)
@@ -92,11 +94,60 @@ layer_param_dat <- layer_param_dat %>%
                                            TRUE ~ default)) %>%
   dplyr::mutate(is_numeric = !is.na(as.numeric(default)))
 
-## fix up docos
-conv_titles <- conv_docs[ , 2] %>%
-  stringr::str_extract("(.*?)layer")
-conv_docs_fixed <- conv_docs[ , 2] %>%
+## fix up docos (mainly to get equations to work with mathjaxr)
+conv_titles <- conv_layer_names[ , 2]
 
+conv_docs_fixed <- conv_docs[ , 2] %>%
+  .[-16] %>%
+  stringr::str_replace_all(regex("\\\\\\((.*?)\\\\\\)",
+                                 dotall = TRUE),
+                           "\\\\mjeqn{\\1}{}") %>%
+  stringr::str_replace_all(regex("\\$\\$(.*?)\\$\\$",
+                                 dotall = TRUE),
+                           function(x) x %>%
+                             stringr::str_remove_all("\n[:blank:]*")) %>%
+  stringr::str_replace_all(regex("\\$\\$(.*?)\\$\\$",
+                               dotall = TRUE),
+                           "\\\\mjdeqn{\\1}{}") %>%
+  # stringr::str_replace_all(regex("\\\\([:alpha:]{1})([^[:alnum:]])",
+  #                                dotall = TRUE,
+  #                                multiline = TRUE),
+  #                          "\\\\boldsymbol{\\1}\\2") %>%
+  # stringr::str_replace_all(regex("\\\\([:upper:]{1})",
+  #                                dotall = TRUE),
+  #                          "\\\\boldsymbol{\\1}") %>%
+  stringr::str_replace_all(regex("\\\\([:alpha:]{1})([^[:alnum:]])",
+                                 dotall = TRUE,
+                                 multiline = TRUE),
+                           "\\1\\2") %>%
+  stringr::str_replace_all(regex("\\\\([:upper:]{1})",
+                                 dotall = TRUE),
+                           "\\1") %>%
+  stringr::str_remove(regex("\\*\\*Arguments\\*\\*(.*?)-(.*)$",
+                           dotall = TRUE)) %>%
+  ## edge cases
+  stringr::str_replace_all("\\\\Z", "Z") %>%
+  stringr::str_replace_all("\n[:blank:]*",
+                           "\n#' ") %>%
+  paste0("#' @description \\loadmathjax ", .) %>%
+  paste0("#' ", conv_titles[-16], "\n#' \n", .) %>%
+  dplyr::tibble(layer_name = conv_titles[-16],
+                roxy = .)
+
+conv_param_roxy <- layer_param_dat %>%
+  dplyr::group_by(layer_name) %>%
+  dplyr::summarise(param_roxy = paste0("@param ", var, " ", description) %>%
+                     paste(collapse = "\n") %>%
+                     paste("#'", .) %>%
+                     stringr::str_replace_all("\n[:blank:]*",
+                                              "\n#' "),
+                   .groups = "drop")
+
+conv_docs_fixed <- conv_docs_fixed %>%
+  dplyr::left_join(conv_param_roxy) %>%
+  dplyr::mutate(roxy = paste(roxy, param_roxy,
+                             "#' @export",
+                             sep = "\n"))
 
 
 ##### pooling ######
@@ -159,7 +210,7 @@ pool_param_dat <- pool_params_code %>%
 
 unique(pool_param_dat$var)
 
-layer_param_dat <- layer_param_dat %>%
+pool_param_dat <- pool_param_dat %>%
   dplyr::left_join(tibble::tribble(~var, ~is_integer,
                                    "channels", TRUE,
                                    "k", TRUE)) %>%
@@ -170,4 +221,72 @@ layer_param_dat <- layer_param_dat %>%
                                            TRUE ~ default)) %>%
   dplyr::mutate(is_numeric = !is.na(as.numeric(default)))
 
-usethis::use_data(build_package, overwrite = TRUE)
+
+## fix up docos (mainly to get equations to work with mathjaxr)
+pool_titles <- pool_layer_names[ , 2]
+
+pool_docs_fixed <- pool_docs[ , 2] %>%
+  stringr::str_replace_all(regex("\\\\\\((.*?)\\\\\\)",
+                                 dotall = TRUE),
+                           "\\\\mjeqn{\\1}{}") %>%
+  stringr::str_replace_all(regex("\\$\\$(.*?)\\$\\$",
+                                 dotall = TRUE),
+                           function(x) x %>%
+                             stringr::str_remove_all("\n[:blank:]*")) %>%
+  stringr::str_replace_all(regex("\\$\\$(.*?)\\$\\$",
+                                 dotall = TRUE),
+                           "\\\\mjdeqn{\\1}{}") %>%
+  stringr::str_replace_all(regex("\\\\([:alpha:]{1})([^[:alnum:]])",
+                                 dotall = TRUE,
+                                 multiline = TRUE),
+                           "\\\\boldsymbol{\\1}\\2") %>%
+  stringr::str_remove(regex("\\*\\*Arguments\\*\\*(.*?)-(.*)$",
+                            dotall = TRUE)) %>%
+  stringr::str_replace_all("\n[:blank:]*",
+                           "\n#' ") %>%
+  paste0("#' @description \\loadmathjax ", .) %>%
+  paste0("#' ", pool_titles, "\n#' \n", .) %>%
+  dplyr::tibble(layer_name = pool_titles,
+                roxy = .)
+
+pool_param_roxy <- pool_param_dat %>%
+  dplyr::group_by(layer_name) %>%
+  dplyr::summarise(param_roxy = paste0("@param ", var, " ", description) %>%
+                     paste(collapse = "\n") %>%
+                     paste("#'", .) %>%
+                     stringr::str_replace_all("\n[:blank:]*",
+                                              "\n#' "),
+                   .groups = "drop") %>%
+  dplyr::mutate(param_roxy = ifelse(grepl("None", param_roxy),
+                                    "", param_roxy))
+
+pool_docs_fixed <- pool_docs_fixed %>%
+  dplyr::left_join(pool_param_roxy) %>%
+  dplyr::mutate(roxy = paste(roxy, param_roxy,
+                             "#' @export",
+                             sep = "\n"))
+
+########## start generating R files ###########
+
+conv_layer_code <- layer_param_dat %>%
+  dplyr::mutate(func_name = paste0("layer_", snakecase::to_snake_case(layer_name))) %>%
+  dplyr::group_by(layer_name) %>%
+  dplyr::summarise(header = paste0(func_name[1], " <- function(object,\n\t",
+                          paste0(var, ifelse(is.na(default), "", paste0(" = ", default)),
+                                collapse = ",\n\t"),
+                          ",\n\t...)\n"),
+                   body = paste0("{\n\targs <- list(",
+                                 paste0(var, " = ",
+                                        ifelse(!is_integer, var, paste0("as.integer(", var, ")")),
+                                        collapse = ",\n\t\t"),
+                                 "\n\t\t)\n\tkeras::create_layer(spk$layers$",
+                                 layer_name[1],
+                                 ", object, args)\n}\n"),
+                   .groups = "drop") %>%
+  dplyr::mutate(code = paste0(header, body)) %>%
+  dplyr::left_join(conv_docs_fixed) %>%
+  dplyr::mutate(all_text = paste(roxy, code, sep = "\n"))
+
+readr::write_lines(conv_layer_code$all_text,
+                  "R/layers_conv.R")
+

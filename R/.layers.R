@@ -1,9 +1,9 @@
 #' A graph convolutional layer (GCN)
 #'
-#' A graph convolutional layer (GCN) as presented by
+#' @description \loadmathjax A graph convolutional layer (GCN) as presented by
 #' [Kipf & Welling (2016)](https://arxiv.org/abs/1609.02907). \cr
 #' **Mode**: single, disjoint, mixed, batch. This layer computes:
-#' \deqn{\Z = \hat \D^{-1/2} \hat \A \hat \D^{-1/2} \X \W + \b}{Z =
+#' \mjdeqn{\boldsymbol{Z} = \hat D^{-1/2} \hat A \hat D^{-1/2} X W + b}{Z =
 #' D_hat^(-1/2)*A_hat*D_hat^(-1/2)*XW + b}
 #' where \eqn{\( \hat \A = \A + \I \)}{A_hat = A + I} is the adjacency
 #' matrix with added self-loops and \eqn{\(\hat\D\)}{D_hat} is its degree matrix. \cr \cr
