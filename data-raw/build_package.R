@@ -38,8 +38,8 @@ params_code <- stringr::str_match(conv_layer_source,
   stringr::str_remove_all("\n") %>%
   stringr::str_split(",") %>%
   purrr::map(~stringr::str_trim(.x) %>%
-               head(-1) %>%
-               tail(-1)) %>%
+               {.[. != "self"]} %>%
+               {.[!grepl("kwargs", .)]}) %>%
   setNames(conv_layer_names[ , 2][-16]) %>%
   purrr::imap_dfr(~unglue::unglue_data(.x,
                                        c("{var}={default}",
@@ -105,7 +105,7 @@ conv_docs_fixed <- conv_docs[ , 2] %>%
   stringr::str_replace_all(regex("\\$\\$(.*?)\\$\\$",
                                  dotall = TRUE),
                            function(x) x %>%
-                             stringr::str_remove_all("\n[:blank:]*")) %>%
+                             stringr::str_replace_all("\n[:blank:]*", " ")) %>%
   stringr::str_replace_all(regex("\\$\\$(.*?)\\$\\$",
                                dotall = TRUE),
                            "\\\\mjdeqn{\\1}{}") %>%
@@ -126,7 +126,15 @@ conv_docs_fixed <- conv_docs[ , 2] %>%
   stringr::str_remove(regex("\\*\\*Arguments\\*\\*(.*?)-(.*)$",
                            dotall = TRUE)) %>%
   ## edge cases
-  stringr::str_replace_all("\\\\Z", "Z") %>%
+  #stringr::str_replace_all("\\\\Z", "Z") %>%
+  stringr::str_replace_all("\\\\bar([^[:blank:]])", "\\\\bar \\1") %>%
+  stringr::str_replace_all("\\\\hat([^[:blank:]])", "\\\\hat \\1") %>%
+  stringr::str_replace_all("(\\S+)\\\\mjeqn\\{_(.*?)\\}",
+                           "\\\\mjeqn{\\\\mathrm{\\1} _ \\2}") %>%
+  stringr::str_replace_all("\\}_", "} _ ") %>%
+  stringr::str_replace_all("\\\\big\\[", "[") %>%
+  stringr::str_replace_all("\\\\big\\]", "]") %>%
+  ## add roxygen tags
   stringr::str_replace_all("\n[:blank:]*",
                            "\n#' ") %>%
   paste0("#' @description \\loadmathjax ", .) %>%
@@ -165,7 +173,7 @@ pool_layer_names <- stringr::str_match(pool_layer_source,
                                        'class[:blank:](.*?)\\((.*?)\\)')
 
 pool_docs <- stringr::str_match(pool_layer_source,
-                                regex('r\\"\\"\\"(.*?)\\"\\"\\"',
+                                regex('\\"\\"\\"(.*?)\\"\\"\\"',
                                       dotall = TRUE))
 
 pool_params_code <- stringr::str_match(pool_layer_source,
@@ -175,8 +183,9 @@ pool_params_code <- stringr::str_match(pool_layer_source,
   stringr::str_remove_all("\n") %>%
   stringr::str_split(",") %>%
   purrr::map(~stringr::str_trim(.x) %>%
-               head(-1) %>%
-               tail(-1)) %>%
+               {.[. != "self"]} %>%
+               {.[!grepl("kwargs", .)]}
+             ) %>%
   purrr::map(~{if(length(.x) == 0) "None"
                 else .x}) %>%
   setNames(pool_layer_names[ , 2]) %>%
@@ -242,6 +251,17 @@ pool_docs_fixed <- pool_docs[ , 2] %>%
                            "\\\\boldsymbol{\\1}\\2") %>%
   stringr::str_remove(regex("\\*\\*Arguments\\*\\*(.*?)-(.*)$",
                             dotall = TRUE)) %>%
+  ## edge cases
+  #stringr::str_replace_all("\\\\Z", "Z") %>%
+  stringr::str_replace_all("\\\\bar([^[:blank:]])", "\\\\bar \\1") %>%
+  stringr::str_replace_all("\\\\hat([^[:blank:]])", "\\\\hat \\1") %>%
+  stringr::str_replace_all("(\\S+)\\\\mjeqn\\{_(.*?)\\}",
+                           "\\\\mjeqn{\\\\mathrm{\\1} _ \\2}") %>%
+  stringr::str_replace_all("\\}_", "} _ ") %>%
+  stringr::str_replace_all("\\|_", "\\| _ ") %>%
+  stringr::str_replace_all("\\\\big\\[", "[") %>%
+  stringr::str_replace_all("\\\\big\\]", "]") %>%
+  ## add roxygen tags
   stringr::str_replace_all("\n[:blank:]*",
                            "\n#' ") %>%
   paste0("#' @description \\loadmathjax ", .) %>%
@@ -287,6 +307,30 @@ conv_layer_code <- layer_param_dat %>%
   dplyr::left_join(conv_docs_fixed) %>%
   dplyr::mutate(all_text = paste(roxy, code, sep = "\n"))
 
+pool_layer_code <- pool_param_dat %>%
+  dplyr::mutate(var = ifelse(var == "None", "", var)) %>%
+  dplyr::mutate(func_name = paste0("layer_", snakecase::to_snake_case(layer_name))) %>%
+  dplyr::group_by(layer_name) %>%
+  dplyr::summarise(header = paste0(func_name[1], " <- function(object,\n\t",
+                                   paste0(var, ifelse(is.na(default), "", paste0(" = ", default)),
+                                          collapse = ",\n\t"),
+                                   ifelse(var[1] == "", "", ",\n"),
+                                   "\t...)\n"),
+                   body = paste0("{\n\targs <- list(",
+                                 paste0(var, ifelse(var == "", "", " = "),
+                                        ifelse(!is_integer, var, paste0("as.integer(", var, ")")),
+                                        collapse = ",\n\t\t"),
+                                 "\n\t\t)\n\tkeras::create_layer(spk$layers$",
+                                 layer_name[1],
+                                 ", object, args)\n}\n"),
+                   .groups = "drop") %>%
+  dplyr::mutate(code = paste0(header, body)) %>%
+  dplyr::left_join(pool_docs_fixed) %>%
+  dplyr::mutate(all_text = paste(roxy, code, sep = "\n"))
+
 readr::write_lines(conv_layer_code$all_text,
                   "R/layers_conv.R")
+
+readr::write_lines(pool_layer_code$all_text,
+                   "R/layers_pool.R")
 
