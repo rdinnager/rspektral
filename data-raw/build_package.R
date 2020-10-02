@@ -7,6 +7,8 @@ library(stringr)
 library(unglue)
 library(snakecase)
 library(reticulate)
+library(tidygraph)
+library(dplyr)
 
 spektral_dir <- tempdir()
 src_dir <- usethis::use_course("danielegrattarola/spektral", spektral_dir)
@@ -299,7 +301,6 @@ non_triv <- stringr::str_which(preproc_source[ , 3],
                                negate = TRUE)
 
 ########### datasets #########
-
 
 
 

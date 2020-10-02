@@ -19,7 +19,9 @@ Imports:
     reticulate (>= 1.10),
     tensorflow,
     keras,
-    tidygraph
+    tidygraph,
+    Matrix,
+    magrittr
 Suggests: 
     knitr,
     rmarkdown,
