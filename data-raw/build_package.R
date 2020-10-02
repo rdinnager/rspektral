@@ -286,6 +286,23 @@ pool_docs_fixed <- pool_docs_fixed %>%
                              "#' @export",
                              sep = "\n"))
 
+
+########## preprocess functions ##########
+
+preproc_source <- conv_layer_source %>%
+  .[-16] %>%
+  stringr::str_match(regex("def preprocess\\((.*?)\\)\\:(.*?)$",
+                           dotall = TRUE))
+
+non_triv <- stringr::str_which(preproc_source[ , 3],
+                               "\n        return A",
+                               negate = TRUE)
+
+########### datasets #########
+
+
+
+
 ########## start generating R files ###########
 
 conv_layer_code <- layer_param_dat %>%
@@ -302,6 +319,7 @@ conv_layer_code <- layer_param_dat %>%
                                  "\n\t\t)\n\tkeras::create_layer(spk$layers$",
                                  layer_name[1],
                                  ", object, args)\n}\n"),
+                   func_name = func_name[1],
                    .groups = "drop") %>%
   dplyr::mutate(code = paste0(header, body)) %>%
   dplyr::left_join(conv_docs_fixed) %>%
@@ -323,10 +341,45 @@ pool_layer_code <- pool_param_dat %>%
                                  "\n\t\t)\n\tkeras::create_layer(spk$layers$",
                                  layer_name[1],
                                  ", object, args)\n}\n"),
+                   func_name = func_name[1],
                    .groups = "drop") %>%
   dplyr::mutate(code = paste0(header, body)) %>%
   dplyr::left_join(pool_docs_fixed) %>%
   dplyr::mutate(all_text = paste(roxy, code, sep = "\n"))
+
+
+
+preproc_code <- paste0(conv_layer_code$func_name[non_triv] %>%
+                         stringr::str_replace("layer_", "preprocess_"),
+                       " <- function(A) {\n\tspk$layers$", conv_layer_code$layer_name[non_triv],
+                       "$preprocess(A)\n}\n")
+
+preproc_docs <- "#' Preprocess Adjacency Matrix for use with <layer_name>
+#'
+#'This utility function can be used to  preprocess a network adjacency matrix
+#'into an object that can be used to represent the network in the \\code{\\link{<layer_name>}} layer.
+#'Internally it does this:\\cr<code>
+#'
+#'@param A An Adjacency matrix (can be dense or sparse)
+#'
+#'@export
+"
+
+preproc_docs <- glue::glue_data(list(layer_name = conv_layer_code$func_name[non_triv],
+                                     code = preproc_source[non_triv, 3] %>%
+                                       stringr::str_remove_all("return ") %>%
+                                       stringr::str_remove_all("[:blank:]") %>%
+                                       stringr::str_replace_all("(\\w+)\\((.*?)\\)",
+                                                              "\\\\link{utils_\\1}(\\2)") %>%
+                                       stringr::str_replace_all("\n", "\n#'\t\\\\code{") %>%
+                                       stringr::str_replace_all(regex("$", multiline = TRUE),
+                                                                "}\\\\cr") %>%
+                                       stringr::str_remove_all("^\\}\\\\cr")),
+                                preproc_docs,
+                                .open = "<",
+                                .close = ">")
+
+preproc <- paste(preproc_docs, preproc_code, sep = "\n")
 
 readr::write_lines(conv_layer_code$all_text,
                   "R/layers_conv.R")
@@ -334,3 +387,5 @@ readr::write_lines(conv_layer_code$all_text,
 readr::write_lines(pool_layer_code$all_text,
                    "R/layers_pool.R")
 
+readr::write_lines(preproc,
+                   "R/preprocess.R")
