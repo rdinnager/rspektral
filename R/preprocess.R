@@ -1,40 +1,74 @@
-#' Calculate modified Laplacian on an adjacency matrix
+#' Preprocess Adjacency Matrix for use with layer_arma_conv
 #'
-#' This is used to preprocess and adjacency matrix so it can be used directly
-#' in a graph convolutional network (GCN), as implement by \code{\link{layer_graph_conv}}
+#'This utility function can be used to  preprocess a network adjacency matrix
+#'into an object that can be used to represent the network in the \code{\link{layer_arma_conv}} layer.
+#'Internally it does this:\cr
+#'	\code{fltr=\link{utils_normalized_laplacian}(A,symmetric=True)}\cr
+#'	\code{fltr=\link{utils_rescale_laplacian}(fltr,lmax=2)}\cr
+#'	\code{fltr}\cr
 #'
-#' @param A Adjacency matrix as a sparse matrix (\code{\link[Matrix]{dgRMatrix}})
-#' @param densify Should the Laplacian be returned as a dense matrix (default is sparse)?
+#'@param A An Adjacency matrix (can be dense or sparse)
 #'
-#' @return The Laplacian as a sparse matrix (or a dense matrix if \code{densify} is \code{TRUE})
-#' @export
-preprocess_laplacian_mod <- function(A, densify = FALSE) {
-  res <- spk$layers$GraphConv$preprocess(A)
-  if(densify) {
-    res <- as.matrix(res)
-  }
-
-  res
-
+#'@export
+preprocess_arma_conv <- function(A) {
+	spk$layers$ARMAConv$preprocess(A)
 }
 
-
-#' Calculate Chebyshev polynomials from an adjacency matrix
+#' Preprocess Adjacency Matrix for use with layer_cheb_conv
 #'
-#' This is used to preprocess and adjacency matrix so it can be used directly
-#' in a Chebyshev graph convolutional layer, as implement by \code{\link{layer_cheb_conv}}
+#'This utility function can be used to  preprocess a network adjacency matrix
+#'into an object that can be used to represent the network in the \code{\link{layer_cheb_conv}} layer.
+#'Internally it does this:\cr
+#'	\code{L=\link{utils_normalized_laplacian}(A)}\cr
+#'	\code{L=\link{utils_rescale_laplacian}(L)}\cr
+#'	\code{L}\cr
 #'
-#' @param A Adjacency matrix as a sparse matrix (\code{\link[Matrix]{dgRMatrix}})
-#' @param densify Should the result be returned as a dense matrix (default is sparse)?
+#'@param A An Adjacency matrix (can be dense or sparse)
 #'
-#' @return Chebyshev polynomials as a sparse matrix (or a dense matrix if \code{densify} is \code{TRUE})
-#' @export
-preprocess_chebyshev <- function(A, densify = FALSE) {
-  res <- spk$layers$ChebConv$preprocess(A)
-  if(densify) {
-    res <- as.matrix(res)
-  }
-
-  res
-
+#'@export
+preprocess_cheb_conv <- function(A) {
+	spk$layers$ChebConv$preprocess(A)
 }
+
+#' Preprocess Adjacency Matrix for use with layer_graph_conv
+#'
+#'This utility function can be used to  preprocess a network adjacency matrix
+#'into an object that can be used to represent the network in the \code{\link{layer_graph_conv}} layer.
+#'Internally it does this:\cr
+#'	\code{\link{utils_localpooling_filter}(A)}\cr
+#'
+#'@param A An Adjacency matrix (can be dense or sparse)
+#'
+#'@export
+preprocess_graph_conv <- function(A) {
+	spk$layers$GraphConv$preprocess(A)
+}
+
+#' Preprocess Adjacency Matrix for use with layer_graph_conv_skip
+#'
+#'This utility function can be used to  preprocess a network adjacency matrix
+#'into an object that can be used to represent the network in the \code{\link{layer_graph_conv_skip}} layer.
+#'Internally it does this:\cr
+#'	\code{\link{utils_normalized_adjacency}(A)}\cr
+#'
+#'@param A An Adjacency matrix (can be dense or sparse)
+#'
+#'@export
+preprocess_graph_conv_skip <- function(A) {
+	spk$layers$GraphConvSkip$preprocess(A)
+}
+
+#' Preprocess Adjacency Matrix for use with layer_tag_conv
+#'
+#'This utility function can be used to  preprocess a network adjacency matrix
+#'into an object that can be used to represent the network in the \code{\link{layer_tag_conv}} layer.
+#'Internally it does this:\cr
+#'	\code{\link{utils_normalized_adjacency}(A)}\cr
+#'
+#'@param A An Adjacency matrix (can be dense or sparse)
+#'
+#'@export
+preprocess_tag_conv <- function(A) {
+	spk$layers$TAGConv$preprocess(A)
+}
+

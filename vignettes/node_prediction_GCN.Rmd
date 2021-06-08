@@ -23,6 +23,7 @@ library(tfdatasets)
 ```{r load_data}
 c(A, X, y, train_mask, val_mask, test_mask) %<-% dataset_citations()
 ```
+
 ```{r params}
 channels <- 16           # Number of channels in the first layer
 N <- dim(X)[1]           # Number of nodes in the graph

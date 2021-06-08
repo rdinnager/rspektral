@@ -19,4 +19,65 @@ library(keras)
 library(rspektral)
 ```
 
-Here we will compare a number of different graph-based convolutional network methods for classifying documents using information about their citation networks. This is a node classification task, where documents are nodes in a citation networks, and features are the presence of different words (a bag-of-words)
+Here we will compare a number of different graph-based convolutional network methods for classifying documents using information about their citation networks. This is a node classification task, where documents are nodes in a citation networks, and features are the presence of different words (a bag-of-words).
+
+First we will load a dataset of citations provided by the `spektral` package. This comes in the form fo a list of a `A`, and adjacency matrix for the citation network, `X` as matrix of node-level features (the bag-of-words), `y`, the labels we are trying to predict (corresponding to "topics"), and three different masks, used to set zero weights on some samples in order to remove them effectively from training.
+
+```{r load_data}
+## loads 'cora' dataset by default
+c(A, X, y, train_mask, val_mask, test_mask) %<-% dataset_citations() 
+```
+Next we will setup some parameters that we will use in our deep graph models:
+
+```{r params}
+channels <- 16           # Number of channels in the first layer
+N <- dim(X)[1]           # Number of nodes in the graph
+F <- dim(X)[2]           # Original size of node features
+n_classes <- dim(y)[2]   # Number of classes
+dropout <- 0.5           # Dropout rate for the features
+l2_reg <- 5e-4 / 2       # L2 regularization rate
+learning_rate <- 1e-2    # Learning rate
+epochs <- 300            # Number of training epochs
+es_patience <- 10        # Patience for early stopping
+```
+
+So, first we will setup one of the simpler graph neural networks, to show how this all works.
+The first thing we generally need to do to get a graph neural network up and running is to preprocess our data into a form expected by whatever graph neural network layers we want to use. In this case we will use a few Graph Convolution layers. This accepts the graph in the form of a Laplacian matrix, which is a transformation of the adjacency matrix. We can generate this easily using a `preprocess` function, which perform the necessary calculations for us. For a `layer_graph_conv()` we use the `preprocess_graph_conv()` function. We also will convert our `X` matrix, which is currently a sparse matrix, into a dense matrix for this analysis.
+
+```{r preprocess}
+fltr <- preprocess_graph_conv(A)
+X <- as.matrix(X)
+
+class(fltr)
+dim(fltr)
+dim(X)
+```
+Next we setup our model using `keras` and the new layers provided by `spekral` and accessed in R through `rspektral`.
+
+```{r setup_mod_1}
+X_in <- layer_input(shape = c(F))
+fltr_in <- layer_input(shape = c(N), sparse = TRUE)
+
+dropout_1 <- X_in %>%
+  layer_dropout(rate = dropout)
+
+graph_conv_1 <- list(dropout_1, fltr_in) %>%
+  layer_graph_conv(channels,
+                   activation = 'relu',
+                   kernel_regularizer = regularizer_l2(l2_reg),
+                   use_bias = FALSE)
+
+dropout_2 <-  graph_conv_1 %>%
+  layer_dropout(dropout)
+
+graph_conv_2 <- list(dropout_2, fltr_in) %>%
+  layer_graph_conv(n_classes,
+                   activation = "softmax",
+                   use_bias = FALSE)
+
+model <- keras_model(inputs = list(X_in, fltr_in), outputs = graph_conv_2)
+summary(model)
+```
+
+
+
